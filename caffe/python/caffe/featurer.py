@@ -20,6 +20,7 @@ class Featurer(caffe.Net):
     mean, input_scale, raw_scale, channel_swap: params for
         preprocessing options.
     """
+
     def __init__(self, model_file, pretrained_file, image_dims=None,
                  mean=None, input_scale=None, raw_scale=None,
                  channel_swap=None):
@@ -35,9 +36,9 @@ class Featurer(caffe.Net):
             if mean.ndim == 4:
                 mean = mean[0]
             assert mean.ndim == 3
-            mean =  np.transpose(mean, (1, 2, 0)) 
+            mean = np.transpose(mean, (1, 2, 0))
             mean = caffe.io.resize_image(mean, mean_size)
-            mean =  np.transpose(mean, (2, 0, 1))
+            mean = np.transpose(mean, (2, 0, 1))
             self.transformer.set_mean(in_, mean)
         if input_scale is not None:
             self.transformer.set_input_scale(in_, input_scale)
@@ -62,14 +63,14 @@ class Featurer(caffe.Net):
                           dtype=np.float32)
         for ix, in_ in enumerate(inputs):
             input_[ix] = caffe.io.resize_image(in_, self.image_dims)
-        
+
         if oversample:
             # Generate center, corner, and mirrored crops.
             input_ = caffe.io.oversample(input_, self.crop_dims)
         else:
             center = np.array(self.image_dims) / 2.0
             crop = np.tile(center, (1, 2))[0] + np.concatenate([-self.crop_dims / 2.0, self.crop_dims / 2.0])
-            crop = map(lambda x: int(x), crop)
+            crop = list(map(lambda x: int(x), crop))
             input_ = input_[:, crop[0]:crop[2], crop[1]:crop[3], :]
 
         # Feature
@@ -78,17 +79,19 @@ class Featurer(caffe.Net):
         for ix, in_ in enumerate(input_):
             caffe_in[ix] = self.transformer.preprocess(self.inputs[0], in_)
         out = self.forward_all(**{self.inputs[0]: caffe_in})
-        
+
         features = list()
         for feature_layer_name in feature_layer_names:
-            cand_layers = filter(lambda x: x.startswith(feature_layer_name), self.blobs.keys())
+            # cand_layers = filter(lambda x: x.startswith(feature_layer_name), self.blobs.keys())
+            cand_layers = [x for x in self.blobs.keys() if x.startswith(feature_layer_name)]
             if len(cand_layers) > 1:
-                cand_layers = filter(lambda x: x == feature_layer_name, cand_layers)
+                # cand_layers = filter(lambda x: x == feature_layer_name, cand_layers)
+                cand_layers = [x for x in cand_layers if x == feature_layer_name]
             if len(cand_layers) == 1:
                 feature_layer_name = cand_layers[0]
             else:
                 return None
-            
+
             feature = np.copy(self.blobs[feature_layer_name].data)
             size = feature.shape
             # For oversampling, average predictions across crops.
@@ -105,4 +108,3 @@ class Featurer(caffe.Net):
         fusion_feature = np.concatenate(features, axis=0)
         fusion_feature = fusion_feature.astype(np.float32)
         return fusion_feature
-

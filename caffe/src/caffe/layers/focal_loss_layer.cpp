@@ -146,7 +146,7 @@ void FocalLossLayer<Dtype>::Backward_cpu(
 }
 
 #ifdef CPU_ONLY
-STUB_GPU_BACKWARD(FocalLossLayer, Backward);
+STUB_GPU(FocalLossLayer);
 #endif
 
 INSTANTIATE_CLASS(FocalLossLayer);

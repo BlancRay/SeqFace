@@ -8,6 +8,7 @@ try:
     from caffe.proto import caffe_pb2
 except:
     import sys
+
     if sys.version_info >= (3, 0):
         print("Failed to include caffe_pb2, things might go wrong!")
     else:
@@ -32,6 +33,7 @@ def blobproto_to_array(blob, return_diff=False):
         return data.reshape(blob.num, blob.channels, blob.height, blob.width)
     else:
         return data.reshape(blob.shape.dim)
+
 
 def array_to_blobproto(arr, diff=None):
     """Converts a N-dimensional array to blob proto. If diff is given, also
@@ -105,6 +107,7 @@ class Transformer:
     ----------
     net : a Net for which the input should be prepared
     """
+
     def __init__(self, inputs):
         self.inputs = inputs
         self.transpose = {}
@@ -255,8 +258,8 @@ class Transformer:
             if len(ms) != 3:
                 raise ValueError('Mean shape invalid')
             if ms != self.inputs[in_][1:]:
-                print "mean:", ms
-                print "image:", self.inputs[in_][1:]
+                print("mean:", ms)
+                print("image:", self.inputs[in_][1:])
                 raise ValueError('Mean shape incompatible with input shape.')
         self.mean[in_] = mean
 
@@ -294,7 +297,7 @@ def load_image(filename, color=True):
         of size (H x W x 3) in RGB or
         of size (H x W x 1) in grayscale.
     """
-    img = skimage.img_as_float(skimage.io.imread(filename, as_grey=not color)).astype(np.float32)
+    img = skimage.img_as_float(skimage.io.imread(filename, as_gray=not color)).astype(np.float32)
     if img.ndim == 2:
         img = img[:, :, np.newaxis]
         if color:
@@ -368,7 +371,7 @@ def oversample(images, crop_dims):
             curr += 1
     crops_ix[4] = np.tile(im_center, (1, 2)) + np.concatenate([
         -crop_dims / 2.0,
-         crop_dims / 2.0
+        crop_dims / 2.0
     ])
     crops_ix = np.tile(crops_ix, (2, 1))
 
@@ -380,5 +383,5 @@ def oversample(images, crop_dims):
         for crop in crops_ix:
             crops[ix] = im[crop[0]:crop[2], crop[1]:crop[3], :]
             ix += 1
-        crops[ix-5:ix] = crops[ix-5:ix, :, ::-1, :]  # flip for mirrors
+        crops[ix - 5:ix] = crops[ix - 5:ix, :, ::-1, :]  # flip for mirrors
     return crops

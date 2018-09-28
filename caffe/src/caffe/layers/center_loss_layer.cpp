@@ -7,8 +7,8 @@
 namespace caffe {
 
 template <typename Dtype>
-void CenterLossLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {
+void CenterLossLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top)
+{
   const int num_output = this->layer_param_.center_loss_param().num_output();
   N_ = num_output;
   const int axis = bottom[0]->CanonicalAxisIndex(
