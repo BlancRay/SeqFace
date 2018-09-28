@@ -1,43 +1,19 @@
 #!/usr/bin/env python
-#coding: utf-8
-#author: huangyangyu
+# coding: utf-8
+# author: BlancRay
 
 layer_num = 27
-#layer_num = 64
+# layer_num = 64
 
+import argparse
 import os
 import sys
-import gflags
-import cPickle
-import numpy as np
 
+import _pickle as cPickle
 root_dir = os.path.dirname(os.path.abspath("__file__")) + "/../../"
 sys.path.append(root_dir + "code/")
-
-if not gflags.FLAGS.has_key("model_dir"):
-    gflags.DEFINE_string("model_dir", root_dir + "model/ResNet-%d/" % layer_num, "set model dir")
-if not gflags.FLAGS.has_key("feature_layer_names"):
-    gflags.DEFINE_string("feature_layer_names", "['fc5']", "set feature layer names")
-if not gflags.FLAGS.has_key("device_id"):
-    gflags.DEFINE_integer("device_id", 0, "set device id")
-if not gflags.FLAGS.has_key("ratio"):
-    gflags.DEFINE_float("ratio", -1.0, "set image ratio")
-if not gflags.FLAGS.has_key("scale"):
-    gflags.DEFINE_float("scale", 1.1, "set image scale")
-if not gflags.FLAGS.has_key("resize_height"):
-    gflags.DEFINE_integer("resize_height", 144, "set image height")
-if not gflags.FLAGS.has_key("resize_width"):
-    gflags.DEFINE_integer("resize_width", 144, "set image width")
-if not gflags.FLAGS.has_key("raw_scale"):
-    gflags.DEFINE_float("raw_scale", 255.0, "set raw scale")
-if not gflags.FLAGS.has_key("input_scale"):
-    gflags.DEFINE_float("input_scale", 0.0078125, "set raw scale")
-if not gflags.FLAGS.has_key("gray"):
-    gflags.DEFINE_boolean("gray", False, "set gray")
-if not gflags.FLAGS.has_key("oversample"):
-    gflags.DEFINE_boolean("oversample", False, "set oversample")
-
 from featurer import Featurer
+
 
 
 def cos_sim(v1, v2):
@@ -46,10 +22,10 @@ def cos_sim(v1, v2):
     normB = 0.0
     for a, b in zip(v1, v2):
         dot_product += a * b
-        normA += a**2
-        normB += b**2
+        normA += a ** 2
+        normB += b ** 2
     if normA != 0.0 and normB != 0.0:
-        cos = dot_product / ((normA*normB)**0.5)
+        cos = dot_product / ((normA * normB) ** 0.5)
     else:
         cos = 1.0
     sim = 0.5 + 0.5 * cos
@@ -77,7 +53,7 @@ def norml2_sim(v1, v2):
     return sim
 
 
-def test():
+def test(args):
     image_dir = root_dir + "data/LFW/"
 
     image_files = set()
@@ -93,32 +69,29 @@ def test():
 
     feature_file = image_dir + "feature_%d.pkl" % layer_num
     if not os.path.exists(feature_file):
-        gflags.FLAGS(sys.argv)
-        model_dir = gflags.FLAGS.model_dir + "/"
-        featurer = Featurer(deploy_prototxt=model_dir + "deploy.prototxt", \
-                            model_file=model_dir + "train.caffemodel", \
-                            mean_file=model_dir + "mean.binaryproto", \
-                            ratio_file=model_dir + "ratio.txt", \
-                            label_file=model_dir + "label.txt", \
-                            device_id=gflags.FLAGS.device_id, \
-                            ratio=gflags.FLAGS.ratio, \
-                            scale=gflags.FLAGS.scale, \
-                            resize_height=gflags.FLAGS.resize_height, \
-                            resize_width=gflags.FLAGS.resize_width, \
-                            raw_scale=gflags.FLAGS.raw_scale, \
-                            input_scale=gflags.FLAGS.input_scale, \
-                            gray=gflags.FLAGS.gray, \
-                            oversample=gflags.FLAGS.oversample, \
-                            feature_layer_names=eval(gflags.FLAGS.feature_layer_names))
+        model_dir = args.model_dir
+        featurer = Featurer(deploy_prototxt=model_dir + "deploy.prototxt",
+                            model_file=model_dir + "train.caffemodel",
+                            mean_file=model_dir + "mean.binaryproto",
+                            device_id=args.device_id,
+                            ratio=args.ratio,
+                            scale=args.scale,
+                            resize_height=args.resize_height,
+                            resize_width=args.resize_width,
+                            raw_scale=args.raw_scale,
+                            input_scale=args.input_scale,
+                            gray=args.gray,
+                            oversample=args.oversample,
+                            feature_layer_names=args.feature_layer_names)
         features = dict()
         for k, image_file in enumerate(image_files):
-            if not features.has_key(image_file):
+            if image_file not in features:
                 features[image_file.replace(root_dir, "")] = featurer.test(image_file=image_file)
-            print "processed:", k
+            print("processed:", k)
             sys.stdout.flush()
         cPickle.dump(features, open(feature_file, "wb"))
     else:
-        features = cPickle.load(open(feature_file, "rb"))
+        features = cPickle.load(open(feature_file, "rb"), encoding='latin')
 
     sims = list()
     threds = list()
@@ -129,7 +102,7 @@ def test():
         # person2
         feature2 = features[image_file2.replace(root_dir, "")]
         # sim
-        #sim = cos_sim(feature1, feature2)
+        # sim = cos_sim(feature1, feature2)
         sim = norml2_sim(feature1, feature2)
         sims.append((sim, int(tag), image_file1, image_file2))
         threds.append(sim)
@@ -148,13 +121,13 @@ def test():
                         tp += 1
                     else:
                         fn += 1
-                        #print "fp", image_file1, image_file2
+                        # print "fp", image_file1, image_file2
                 if tag == 0:
                     if sim < thred:
                         tn += 1
                     else:
                         fp += 1
-                        #print "fn", image_file1, image_file2
+                        # print "fn", image_file1, image_file2
             tpr = 1.0 * tp / max(tp + fn, 1)
             fnr = 1.0 * fn / max(tp + fn, 1)
             tnr = 1.0 * tn / max(tn + fp, 1)
@@ -163,10 +136,27 @@ def test():
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
                 best_thred = thred
-            f.write("%.6f %.6f\n" % (tpr, fpr))
-            #print thred, (tp + fp + tn + fn), tpr, tnr, accuracy
-        print "best:", len(pairs), best_thred, best_accuracy
+            f.write(b"%.6f %.6f\n" % (tpr, fpr))
+            # print thred, (tp + fp + tn + fn), tpr, tnr, accuracy
+        print("best:", len(pairs), best_thred, best_accuracy)
+
+
+def parse_arguments(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model_dir', type=str, help='set model dir',
+                        default=root_dir + "model/ResNet-%d/" % layer_num)
+    parser.add_argument('--feature_layer_names', type=list, help='set feature layer names', default=['fc5'])
+    parser.add_argument('--device_id', type=int, help='set device id', default=0)
+    parser.add_argument('--ratio', type=float, help='set image ratio', default=-1.0)
+    parser.add_argument('--scale', type=float, help='set image scale', default=1.1)
+    parser.add_argument('--resize_height', type=int, help='set image height', default=144)
+    parser.add_argument('--resize_width', type=int, help='set image height', default=144)
+    parser.add_argument('--raw_scale', type=float, help='set raw scale', default=255.0)
+    parser.add_argument('--input_scale', type=float, help='set raw scale', default=0.0078125)
+    parser.add_argument('--gray', type=bool, help='set gray', default=False)
+    parser.add_argument('--oversample', type=bool, help='set oversample', default=False)
+    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
-    test()
+    test(parse_arguments(sys.argv[1:]))

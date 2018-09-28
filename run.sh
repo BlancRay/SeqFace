@@ -62,6 +62,6 @@ fi
 
 #step 4: run evaluate.py in LFW or YTF directory
 cd code/${dataset}
-python evaluate.py
+python3 evaluate.py
 cd -
 
